@@ -4,13 +4,13 @@ var express = require('express'),
     cookieParser = require('cookie-parser'),
     app = express(),
     server = require('http').Server(app),
-    io = require('socket.io')(server);
+    io = require('socket.io')(server),
+    path = require('path'); // Asegúrate de incluir 'path'
 
 var port = process.env.PORT || 4000;
 
 io.on('connection', function (socket) {
-
-  socket.emit('message', { text : 'Welcome!' });
+  socket.emit('message', { text: 'Welcome!' });
 
   socket.on('subscribe', function (data) {
     socket.join(data.channel);
@@ -22,46 +22,37 @@ var pool = new Pool({
 });
 
 async.retry(
-  {times: 1000, interval: 1000},
-  function(callback) {
-    pool.connect(function(err, client, done) {
+  { times: 1000, interval: 1000 },
+  function (callback) {
+    pool.connect(function (err, client, done) {
       if (err) {
         console.error("Waiting for db");
       }
       callback(err, client);
     });
   },
-  function(err, client) {
+  function (err, client) {
     if (err) {
       return console.error("Giving up");
     }
     console.log("Connected to db");
-    getVotes(client);
+    getRecommendations(client);
   }
 );
 
-function getVotes(client) {
-  client.query('SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote', [], function(err, result) {
+function getRecommendations(client) {
+  client.query('SELECT user_id, recommendation FROM recommendations', [], function (err, result) {
     if (err) {
       console.error("Error performing query: " + err);
     } else {
-      var votes = collectVotesFromResult(result);
-      io.sockets.emit("scores", JSON.stringify(votes));
+      var recommendations = result.rows;
+      io.sockets.emit("recommendations", JSON.stringify(recommendations));
     }
 
-    setTimeout(function() {getVotes(client) }, 1000);
+    setTimeout(function () { getRecommendations(client) }, 1000);
   });
 }
 
-function collectVotesFromResult(result) {
-  var votes = {a: 0, b: 0};
-
-  result.rows.forEach(function (row) {
-    votes[row.vote] = parseInt(row.count);
-  });
-
-  return votes;
-}
 
 app.use(cookieParser());
 app.use(express.urlencoded());
@@ -75,3 +66,4 @@ server.listen(port, function () {
   var port = server.address().port;
   console.log('App running on port ' + port);
 });
+

@@ -10,21 +10,21 @@ services:
     networks:
       - back-tier
  
-  # result: 
-  #   build: ./result
-  #   ports:
-  #     - "5001:80"
-  #   networks:
-  #     - back-tier
+  result: 
+    build: ./result
+    ports:
+      - "5001:80"
+    networks:
+      - back-tier
 
-  # worker:
-  #   build:
-  #     context: ./worker
-  #   depends_on:
-  #     - redis
-  #     - db
-  #   networks:
-  #     - back-tier
+  worker:
+    build:
+      context: ./worker
+    depends_on:
+      - redis
+      - db
+    networks:
+      - back-tier
 
   redis:
     build: ./redis
@@ -33,17 +33,17 @@ services:
     networks:
       - back-tier
 
-#   db: 
-#     build: ./db
-#     ports:
-#       - "5432:5432"
-#     volumes: 
-#       - postgres_data:/var/lib/postgresql/data
-#     networks:
-#       - back-tier  
+  db: 
+    build: ./db
+    ports:
+      - "5432:5432"
+    volumes: 
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - back-tier  
 
-# volumes: 
-#   postgres_data:
+volumes: 
+  postgres_data:
 
 networks:
   back-tier:

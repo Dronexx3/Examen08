@@ -20,37 +20,47 @@ namespace Worker
                 var redisConn = OpenRedisConnection("redis");
                 var redis = redisConn.GetDatabase();
 
-                // Keep alive is not implemented in Npgsql yet. This workaround was recommended:
-                // https://github.com/npgsql/npgsql/issues/1214#issuecomment-235828359
                 var keepAliveCommand = pgsql.CreateCommand();
                 keepAliveCommand.CommandText = "SELECT 1";
 
-                var definition = new { vote = "", voter_id = "" };
+                // Definición de la estructura para las recomendaciones
+                var definition = new { voter_id = "", recommendations = new string[] { } };
+
                 while (true)
                 {
-                    // Slow down to prevent CPU spike, only query each 100ms
                     Thread.Sleep(100);
 
-                    // Reconnect redis if down
-                    if (redisConn == null || !redisConn.IsConnected) {
+                    if (redisConn == null || !redisConn.IsConnected)
+                    {
                         Console.WriteLine("Reconnecting Redis");
                         redisConn = OpenRedisConnection("redis");
                         redis = redisConn.GetDatabase();
                     }
-                    string json = redis.ListLeftPopAsync("votes").Result;
+
+                    string json = redis.ListLeftPopAsync("recommendations").Result;
                     if (json != null)
                     {
-                        var vote = JsonConvert.DeserializeAnonymousType(json, definition);
-                        Console.WriteLine($"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
-                        // Reconnect DB if down
+                        var recommendationData = JsonConvert.DeserializeAnonymousType(json, definition);
+                        if (string.IsNullOrEmpty(recommendationData.voter_id) || recommendationData.recommendations.Length == 0)
+                        {
+                            Console.WriteLine("Invalid recommendation data received, skipping...");
+                            continue;
+                        }
+
+                        Console.WriteLine($"Processing recommendations from user '{recommendationData.voter_id}'");
+
                         if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
                         {
                             Console.WriteLine("Reconnecting DB");
                             pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
                         }
                         else
-                        { // Normal +1 vote requested
-                            UpdateVote(pgsql, vote.voter_id, vote.vote);
+                        {
+                            // Iterar sobre las recomendaciones y almacenarlas
+                            foreach (var recommendation in recommendationData.recommendations)
+                            {
+                                StoreRecommendation(pgsql, recommendationData.voter_id, recommendation);
+                            }
                         }
                     }
                     else
@@ -93,10 +103,14 @@ namespace Worker
             Console.Error.WriteLine("Connected to db");
 
             var command = connection.CreateCommand();
-            command.CommandText = @"CREATE TABLE IF NOT EXISTS votes (
-                                        id VARCHAR(255) NOT NULL UNIQUE,
-                                        vote VARCHAR(255) NOT NULL
-                                    )";
+            // Eliminar la tabla si existe y crear una nueva
+            command.CommandText = @"
+                DROP TABLE IF EXISTS recommendations;
+                CREATE TABLE IF NOT EXISTS recommendations (
+                    user_id VARCHAR(255) NOT NULL,
+                    recommendation TEXT NOT NULL,
+                    PRIMARY KEY (user_id, recommendation)
+                );";
             command.ExecuteNonQuery();
 
             return connection;
@@ -104,7 +118,6 @@ namespace Worker
 
         private static ConnectionMultiplexer OpenRedisConnection(string hostname)
         {
-            // Use IP address to workaround https://github.com/StackExchange/StackExchange.Redis/issues/410
             var ipAddress = GetIp(hostname);
             Console.WriteLine($"Found redis at {ipAddress}");
 
@@ -130,20 +143,21 @@ namespace Worker
                 .First(a => a.AddressFamily == AddressFamily.InterNetwork)
                 .ToString();
 
-        private static void UpdateVote(NpgsqlConnection connection, string voterId, string vote)
+        // Método ajustado para almacenar recomendaciones
+        private static void StoreRecommendation(NpgsqlConnection connection, string userId, string recommendation)
         {
             var command = connection.CreateCommand();
             try
             {
-                command.CommandText = "INSERT INTO votes (id, vote) VALUES (@id, @vote)";
-                command.Parameters.AddWithValue("@id", voterId);
-                command.Parameters.AddWithValue("@vote", vote);
+                command.CommandText = "INSERT INTO recommendations (user_id, recommendation) VALUES (@user_id, @recommendation)";
+                command.Parameters.AddWithValue("@user_id", userId);
+                command.Parameters.AddWithValue("@recommendation", recommendation);
                 command.ExecuteNonQuery();
             }
-            catch (DbException)
+            catch (DbException ex)
             {
-                command.CommandText = "UPDATE votes SET vote = @vote WHERE id = @id";
-                command.ExecuteNonQuery();
+                // Si hay un error, probablemente sea porque ya existe un par (user_id, recommendation)
+                Console.WriteLine($"Failed to insert recommendation '{recommendation}' for user '{userId}': {ex.Message}");
             }
             finally
             {
@@ -152,3 +166,6 @@ namespace Worker
         }
     }
 }
+
+
+
