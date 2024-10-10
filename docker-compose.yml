@@ -1,16 +1,16 @@
-version: '3'
+version: "3"
 
 services:
   vote:
-    build: ./vote  # Directorio donde está el Dockerfile de tu aplicación
+    build: ./vote # Directorio donde está el Dockerfile de tu aplicación
     depends_on:
       - redis
     ports:
       - "5000:80"
     networks:
       - back-tier
- 
-  result: 
+
+  result:
     build: ./result
     ports:
       - "5001:80"
@@ -33,18 +33,18 @@ services:
     networks:
       - back-tier
 
-  db: 
+  db:
     build: ./db
     ports:
       - "5432:5432"
-    volumes: 
+    volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - back-tier  
+      - back-tier
 
-volumes: 
+volumes:
   postgres_data:
 
 networks:
   back-tier:
-    driver: bridge  # Usa la red bridge por defecto
+    driver: bridge # Usa la red bridge por defecto
