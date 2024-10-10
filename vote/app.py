@@ -65,9 +65,9 @@ def get_movie_titles(movies, recommendations):
         movie_data = movies_pd[movies_pd['MovieID'] == movie_id]
         if not movie_data.empty:
             movie_title = movie_data['Title'].iloc[0]
-            movie_titles.append(f"{movie_title}")
+            movie_titles.append(f"{movie_title}: {score:.2f}")
         else:
-            movie_titles.append(f"ID de película {movie_id} (Título no encontrado)")
+            movie_titles.append(f"ID de película {movie_id}: {score:.2f} (Título no encontrado)")
     return movie_titles
 
 @app.route("/", methods=['POST', 'GET'])
@@ -124,6 +124,7 @@ def hello():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True, threaded=True)
+
 
 
 
