@@ -30,6 +30,16 @@
         <div id="hostname">
           Processed by container ID {{hostname}}
         </div>
+
+        <!-- Sección para mostrar las recomendaciones -->
+        {% if recommendations %}
+        <h2>Recomendaciones para ti</h2>
+        <ul>
+          {% for movie in recommendations %}
+          <li>{{ movie }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </div>
     </div>
     
@@ -54,3 +64,4 @@
     {% endif %}
   </body>
 </html>
+

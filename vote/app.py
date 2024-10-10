@@ -65,9 +65,9 @@ def get_movie_titles(movies, recommendations):
         movie_data = movies_pd[movies_pd['MovieID'] == movie_id]
         if not movie_data.empty:
             movie_title = movie_data['Title'].iloc[0]
-            movie_titles.append(f"{movie_title}: {score:.2f}")
+            movie_titles.append(f"{movie_title}")
         else:
-            movie_titles.append(f"ID de película {movie_id}: {score:.2f} (Título no encontrado)")
+            movie_titles.append(f"ID de película {movie_id} (Título no encontrado)")
     return movie_titles
 
 @app.route("/", methods=['POST', 'GET'])
@@ -81,6 +81,7 @@ def hello():
         voter_id = hex(random.getrandbits(64))[2:-1]
 
     vote = None
+    movie_titles = []  # Variable para almacenar las recomendaciones
 
     if request.method == 'POST' and 'vote' in request.form:
         redis = get_redis()
@@ -97,29 +98,32 @@ def hello():
             meta=('x', 'object')
         ).compute()
 
-        target_user = int(voter_id)  # Usar el voter_id como target_user
+        target_user = int(voter_id, 16)  # Convertir el voter_id hexadecimal a entero
         similar_users = find_similar_users(target_user, user_movie_ratings)
         recommendations = get_recommendations(target_user, similar_users, user_movie_ratings)
         movie_titles = get_movie_titles(movies, recommendations)
 
-        # Almacenar las recomendaciones en Redis
+        # Almacenar las recomendaciones en Redis (por si es necesario en el futuro)
         recommendation_data = json.dumps({'voter_id': voter_id, 'recommendations': movie_titles})
         redis.rpush('recommendations', recommendation_data)
 
         client.close()
 
+    # Renderizar la plantilla y pasar las recomendaciones
     resp = make_response(render_template(
         'index.html',
         option_a=option_a,
         option_b=option_b,
         hostname=hostname,
         vote=vote,
-        voter_id=voter_id
+        voter_id=voter_id,
+        recommendations=movie_titles  # Pasar las recomendaciones a la plantilla
     ))
     resp.set_cookie('voter_id', voter_id)
     return resp
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True, threaded=True)
+
 
 
