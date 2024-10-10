@@ -6,7 +6,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.hostname == ip-172-31-83-211]  
+        constraints: [node.hostname == ip-172-31-83-211]
     depends_on:
       - redis
     ports:
@@ -19,7 +19,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.hostname == ip-172-31-35-33]  
+        constraints: [node.hostname == ip-172-31-35-33]
     ports:
       - "5001:80"
     networks:
@@ -30,7 +30,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.hostname == ip-172-31-80-252]  
+        constraints: [node.hostname == ip-172-31-80-252]
     depends_on:
       - redis
       - db
@@ -42,7 +42,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.hostname == ip-172-31-83-133] 
+        constraints: [node.hostname == ip-172-31-83-133]
     ports:
       - "6379:6379"
     networks:
@@ -53,7 +53,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.hostname == ip-172-31-90-70]  
+        constraints: [node.hostname == ip-172-31-90-70]
     ports:
       - "5432:5432"
     volumes:
@@ -66,4 +66,4 @@ volumes:
 
 networks:
   back-tier:
-    driver: overlay  
+    driver: overlay

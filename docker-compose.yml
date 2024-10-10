@@ -1,12 +1,8 @@
-version: "3.8"
+version: "3"
 
 services:
   vote:
-    image: fabianhilares852/examen-vote1
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.hostname == ip-172-31-83-211]  # Asigna este servicio a node1
+    build: ./vote
     depends_on:
       - redis
     ports:
@@ -15,22 +11,15 @@ services:
       - back-tier
 
   result:
-    image: fabianhilares852/examen-result1
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.hostname == ip-172-31-35-33]  # Asigna este servicio a node2
+    build: ./result
     ports:
       - "5001:80"
     networks:
       - back-tier
 
   worker:
-    image: fabianhilares852/examen-worker1
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.hostname == ip-172-31-80-252]  # Asigna el worker a node3
+    build:
+      context: ./worker
     depends_on:
       - redis
       - db
@@ -38,22 +27,14 @@ services:
       - back-tier
 
   redis:
-    image: fabianhilares852/examen-redis1
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.hostname == ip-172-31-83-133]  # Asigna Redis a node4
+    build: ./redis
     ports:
       - "6379:6379"
     networks:
       - back-tier
 
   db:
-    image: fabianhilares852/examen-db1
-    deploy:
-      replicas: 1
-      placement:
-        constraints: [node.hostname == ip-172-31-90-70]  # Asigna la base de datos a node5
+    build: ./db
     ports:
       - "5432:5432"
     volumes:
@@ -66,4 +47,4 @@ volumes:
 
 networks:
   back-tier:
-    driver: overlay  # Usa la red overlay para que los servicios se comuniquen a través de diferentes hosts
+    driver: bridge
